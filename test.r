@@ -12,6 +12,9 @@ capply <- function(v, f) {
     return(unlist(lapply(v, f)))
 }
 
+# standard order of races
+races <- c('White', 'Black', 'Hispanic', 'Asian')
+
 # given a row, returns TRUE if the minority is a democrat, else false.
 is_minority_democrat <- function(row) {
   return((row['R.Race'] == "White" & row['D.Race'] == "White") | row['D.Race'] != "White")
@@ -41,7 +44,6 @@ get_candidate_score <- function(for_candidate, against_candidate) {
 # vector contains (White, Black, Hispanic, Asian)
 # in white-white elections, the democrat (arbitrarily chosen) is the minority
 get_minority_racial_scores <- function(row) {
-    races <- c('White', 'Black', 'Hispanic', 'Asian')
     
     # column names are like `R.White` and `D.Asian` so we have to prepend the
     # party label before the race
@@ -50,7 +52,9 @@ get_minority_racial_scores <- function(row) {
     
     # for every race, get the candidate's score for that race
     map_fn <- function(race){
-        return (get_candidate_score(row[[p(for_party, race)]], row[[p(against_party, race)]]))
+        for_candidate <- as.numeric(row[[p(for_party, race)]])
+        against_candidate <- as.numeric(row[[p(against_party, race)]])
+        return (get_candidate_score(for_candidate, against_candidate))
     }
     return (capply(races, map_fn))
 }
@@ -79,15 +83,11 @@ get_minority_boost <- function(row) {
   democrat_expected <- get_expected_democratic_scores(row[['Year']])
   expected <- if (is_minority_democrat(row)) democrat_expected else 1 - democrat_expected
 
-  print(expected)
-  print(get_minority_racial_scores(row))
-
   return (get_minority_racial_scores(row) - expected)
 }
 
 
 # calculate how many elections we have for every race
-races <- list("White", "Black", "Hispanic", "Asian")
 elections_per_race <- lapply(races, {function(r) nrow(elections_by_race(r))})
 # print(elections_per_race)
 
@@ -96,4 +96,7 @@ elections_per_race <- lapply(races, {function(r) nrow(elections_by_race(r))})
 # print(get_minority_boost(candidates[1,]))
 
 # TODO map boost over all candidates
-#res <- apply(candidates, 1, function(x){ return(get_minority_boost(x)) })
+res <- apply(candidates, 1, function(row) {
+  z <- noquote(row)
+  return (get_minority_boost(z))
+})
