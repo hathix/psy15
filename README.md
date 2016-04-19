@@ -3,5 +3,5 @@
 ## Running
 
 ```r
-R < test.r --no-save
+R < boost.r --no-save
 ```
