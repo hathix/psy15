@@ -91,3 +91,5 @@ print(elections_per_race)
 # e.g. show cory booker's scores
 print(get_minority_racial_scores(candidates[1,]))
 print(get_minority_boost(candidates[1,]))
+
+# TODO map boost over all candidates
