@@ -20,6 +20,22 @@ is_minority_democrat <- function(row) {
   return((row['R.Race'] == "White" & row['D.Race'] == "White") | row['D.Race'] != "White")
 }
 
+# returns the race of the minority candidate in a particular election
+get_minority_in_election <- function(row) {
+    # our elections are all white vs. minority and white vs. white
+    # so if one is a minority, they must be the only minority
+    # and if no minorities, both must be white
+    if (row[['D.Race']] != 'White') {
+        return (row[['D.Race']])
+    }
+    else if (row[['R.Race']] != 'White') {
+        return (row[['R.Race']])
+    }
+    else {
+        return ('White')
+    }
+}
+
 # returns a subset of elections by the race of the minority candidate involved
 elections_by_race <- function(race) {
     if (race == "White") {
@@ -44,12 +60,12 @@ get_candidate_score <- function(for_candidate, against_candidate) {
 # vector contains (White, Black, Hispanic, Asian)
 # in white-white elections, the democrat (arbitrarily chosen) is the minority
 get_minority_racial_scores <- function(row) {
-    
+
     # column names are like `R.White` and `D.Asian` so we have to prepend the
     # party label before the race
     for_party <- if (is_minority_democrat(row)) 'D.' else 'R.'
     against_party <- if (is_minority_democrat(row)) 'R.' else 'D.'
-    
+
     # for every race, get the candidate's score for that race
     map_fn <- function(race){
         for_candidate <- as.numeric(row[[p(for_party, race)]])
@@ -95,7 +111,7 @@ elections_per_race <- lapply(races, {function(r) nrow(elections_by_race(r))})
 # print(get_minority_racial_scores(candidates[1,]))
 # print(get_minority_boost(candidates[1,]))
 
-# TODO map boost over all candidates
+# map boost over all candidates
 res <- apply(candidates, 1, function(row) {
   z <- noquote(row)
   return (get_minority_boost(z))
