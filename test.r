@@ -1,5 +1,6 @@
+# TODO refactor so that nothing uses these as global variables
 candidates <- read.csv("data/candidate-support-by-race.csv")
-lpreferences <- read.csv("data/racial-preference-by-year.csv")
+preferences <- read.csv("data/racial-preference-by-year.csv")
 
 # better version of paste() that concatenates strings without putting a space in betwen
 p <- function(..., sep='') {
@@ -81,6 +82,7 @@ get_expected_democratic_scores <- function(year) {
     year_data <- preferences[preferences$Year == year,]
     if (nrow(year_data) > 0) {
         # our csv stores percentage points (e.g. 45), we need to convert to percent (e.g. 0.45)
+        # TODO refactor to use get_candidate_score (similarly to above fn)
         return (c(year_data$White.D., year_data$Black.D., year_data$Hispanic.D., year_data$Asian.D.) / 100)
     }
     else {
@@ -88,6 +90,20 @@ get_expected_democratic_scores <- function(year) {
         average <- (get_expected_democratic_scores(year + 1) + get_expected_democratic_scores(year - 1)) / 2
         return (average)
     }
+}
+
+# Given the combined race / boosts matrix and a candidate race, returns the median
+# boost by voter race
+boosts_by_race <- function(combined, race) {
+  # filter out only the elections with candidates of that race
+  elections_of_race <- combined[combined[,'MinorityRace'] == race,]
+  # extract just the boosts now, and convert it back into numbers
+  boosts <- elections_of_race[,2:5]
+  class(boosts) <- "numeric"
+
+  # find the median boost per race
+  medians <- apply(boosts, 2, function(col) { return(median(col, na.rm=TRUE))})
+  return (medians)
 }
 
 # given a row of the candidates table, returns a vector (White, Black, Hispanic, Asian)
@@ -112,7 +128,25 @@ elections_per_race <- lapply(races, {function(r) nrow(elections_by_race(r))})
 # print(get_minority_boost(candidates[1,]))
 
 # map boost over all candidates
-res <- apply(candidates, 1, function(row) {
+boosts <- apply(candidates, 1, function(row) {
   z <- noquote(row)
   return (get_minority_boost(z))
 })
+
+# get list of minorities per election
+minorities <- apply(candidates, 1, get_minority_in_election)
+
+# merge minority and boost data to get one big matrix
+# each row = candidate, W boost, B boost, H boost, A boost
+# note that this turns all the numbers into strings... can extract/numerify later
+combined <- cbind(matrix(minorities),t(boosts))
+colnames(combined) <- list("MinorityRace", "WhiteBoost", "BlackBoost", "HispanicBoost", "AsianBoost")
+
+# calculate the boosts for every race
+racial_boosts <- rbind(
+  boosts_by_race(combined, "White"),
+  boosts_by_race(combined, "Black"),
+  boosts_by_race(combined, "Hispanic"),
+  boosts_by_race(combined, "Asian")
+)
+rownames(racial_boosts) <- races
