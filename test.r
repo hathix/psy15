@@ -1,17 +1,20 @@
 candidates <- read.csv("data/candidate-support-by-race.csv")
 lpreferences <- read.csv("data/racial-preference-by-year.csv")
 
-# given a row, runs `if_democrat()` if the minority candidate in that election
-# is a democrat, otherwise runs `if_republican()`
-minority_logic_test <- function(row, if_democrat, if_republican) {
-  if ((row$R.Race == "White" & row$D.Race == "White") | row$D.Race != "White") {
-    # democrat is minority
-    return (if_democrat())
-  }
-  else {
-    # republican is minority
-    return (if_republican())
-  }  
+# better version of paste() that concatenates strings without putting a space in betwen
+p <- function(..., sep='') {
+  paste(..., sep=sep, collapse=sep)
+}
+
+# maps a vector/list to a vector
+# capply(vector, function)
+capply <- function(v, f) {
+    return(unlist(lapply(v, f)))
+}
+
+# given a row, returns TRUE if the minority is a democrat, else false.
+is_minority_democrat <- function(row) {
+  return((row['R.Race'] == "White" & row['D.Race'] == "White") | row['D.Race'] != "White")
 }
 
 # returns a subset of elections by the race of the minority candidate involved
@@ -38,22 +41,18 @@ get_candidate_score <- function(for_candidate, against_candidate) {
 # vector contains (White, Black, Hispanic, Asian)
 # in white-white elections, the democrat (arbitrarily chosen) is the minority
 get_minority_racial_scores <- function(row) {
-    # how to extract scores based on whether democrat or republican is minority
-    if_democrat <- function() {
-      return (c(get_candidate_score(row$D.White, row$R.White),
-        get_candidate_score(row$D.Black, row$R.Black),
-        get_candidate_score(row$D.Hispanic, row$R.Hispanic),
-        get_candidate_score(row$D.Asian, row$R.Asian)))
-    }
-    if_republican <- function() {
-      return (c(get_candidate_score(row$R.White, row$D.White),
-        get_candidate_score(row$R.Black, row$D.Black),
-        get_candidate_score(row$R.Hispanic, row$D.Hispanic),
-        get_candidate_score(row$R.Asian, row$D.Asian)))
-    }
+    races <- c('White', 'Black', 'Hispanic', 'Asian')
     
-    scores <- minority_logic_test(row, if_democrat, if_republican)
-    return (scores)
+    # column names are like `R.White` and `D.Asian` so we have to prepend the
+    # party label before the race
+    for_party <- if (is_minority_democrat(row)) 'D.' else 'R.'
+    against_party <- if (is_minority_democrat(row)) 'R.' else 'D.'
+    
+    # for every race, get the candidate's score for that race
+    map_fn <- function(race){
+        return (get_candidate_score(row[[p(for_party, race)]], row[[p(against_party, race)]]))
+    }
+    return (capply(races, map_fn))
 }
 
 # given a year, finds the expected scores (White, Black, Hispanic, Asian)
@@ -75,21 +74,26 @@ get_expected_democratic_scores <- function(year) {
 # of the minority candidate's boost,
 # where boost is (actual score for candidate) - (expected score for year)
 get_minority_boost <- function(row) {
-  # we calculate expected score for democrats... if minority is republican we need to take the inverse
-  democrat_expected <- get_expected_democratic_scores(row$Year)
-  expected <- minority_logic_test(row, function(){ return(democrat_expected)}, function(){return (1 - democrat_expected)})
-  
+  # we calculate expected score for democrats... if minority is republican we need to take
+  # 1 - that
+  democrat_expected <- get_expected_democratic_scores(row[['Year']])
+  expected <- if (is_minority_democrat(row)) democrat_expected else 1 - democrat_expected
+
+  print(expected)
+  print(get_minority_racial_scores(row))
+
   return (get_minority_racial_scores(row) - expected)
 }
 
 
 # calculate how many elections we have for every race
-races = list("White", "Black", "Hispanic", "Asian")
-elections_per_race = lapply(races, {function(r) nrow(elections_by_race(r))})
-print(elections_per_race)
+races <- list("White", "Black", "Hispanic", "Asian")
+elections_per_race <- lapply(races, {function(r) nrow(elections_by_race(r))})
+# print(elections_per_race)
 
 # e.g. show cory booker's scores
-print(get_minority_racial_scores(candidates[1,]))
-print(get_minority_boost(candidates[1,]))
+# print(get_minority_racial_scores(candidates[1,]))
+# print(get_minority_boost(candidates[1,]))
 
 # TODO map boost over all candidates
+#res <- apply(candidates, 1, function(x){ return(get_minority_boost(x)) })
