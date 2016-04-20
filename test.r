@@ -22,12 +22,12 @@ test_same_race_boosts <- function() {
         # disregard any rows (elections) where the race boost is N/A
         # (namely, we don't have data on how voters of the candidate's race
         # voted for them)
-        filtered_boosts <- main_boosts[
-            !is.na(main_boosts[,1]) & !is.na(main_boosts[,2]),]
+        # filtered_boosts <- main_boosts[
+            # !is.na(main_boosts[,1]) & !is.na(main_boosts[,2]),]
 
         # paired=TRUE here since each white/race boost is paired
         # (both come from the same election)
-        ttest <- t.test(filtered_boosts[,2], filtered_boosts[,1],
+        ttest <- t.test(main_boosts[,2], main_boosts[,1],
             paired=TRUE, alternative="greater")
         return (ttest[['p.value']])
     }
