@@ -4,4 +4,4 @@ source("minority.r")
 source("score.r")
 source("boost.r")
 
-boosts <- racial_boosts()
+boosts <- all_median_boosts()

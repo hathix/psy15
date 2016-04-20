@@ -10,8 +10,9 @@ minority_boost <- function(row) {
   return (minority_scores(row) - expected_scores(row))
 }
 
-# Given the combined race / boosts matrix and a candidate race, returns the median
-# boost by voter race
+# Given the full boost data and a particular race, returns the
+# boost data for just candidates of that race. Effectively a filter.
+# The data is cleaned and turned into numbers.
 boosts_of_race <- function(combined, race) {
   # filter out only the elections with candidates of that race
   elections_of_race <- combined[combined[,'MinorityRace'] == race,]
@@ -19,9 +20,13 @@ boosts_of_race <- function(combined, race) {
   boosts <- elections_of_race[,2:5]
   class(boosts) <- "numeric"
 
-  # find the median boost per race
-  medians <- apply(boosts, 2, function(col) { return(median(col, na.rm=TRUE))})
-  return (medians)
+  return (boosts)
+}
+
+# returns the median boost for every race. Run on the return value of boosts_of_race().
+median_boosts <- function(boosts) {
+    medians <- apply(boosts, 2, function(col) { return(median(col, na.rm=TRUE))})
+    return (medians)
 }
 
 # for every election, returns the race of the minority candidate
@@ -43,18 +48,19 @@ full_boost_data <- function() {
     return (combined)
 }
 
-# Returns a table of racial boosts
-racial_boosts <- function() {
+# Returns a table containing the median racial boosts for every
+# candidate race / voter race pair.
+all_median_boosts <- function() {
     combined <- full_boost_data()
 
     # calculate the boosts for every race
-    racial_boosts <- rbind(
-      boosts_of_race(combined, "White"),
-      boosts_of_race(combined, "Black"),
-      boosts_of_race(combined, "Hispanic"),
-      boosts_of_race(combined, "Asian")
+    all_boosts <- rbind(
+      median_boosts(boosts_of_race(combined, "White")),
+      median_boosts(boosts_of_race(combined, "Black")),
+      median_boosts(boosts_of_race(combined, "Hispanic")),
+      median_boosts(boosts_of_race(combined, "Asian"))
     )
-    rownames(racial_boosts) <- races
+    rownames(all_boosts) <- races
 
-    return(racial_boosts)
+    return(all_boosts)
 }
