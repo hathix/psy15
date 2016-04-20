@@ -37,7 +37,10 @@ minority_race_of_election <- function(row) {
     }
 }
 
-# returns a candidate's score (margin of victory, i.e. percent of vote) in an election
+# returns a candidate's score: their ratio of support in an election.
+# this is the ratio of people supporting them over the total number of people
+# polled. this standardizes for polls where the total amount of support
+# for the 2 major candidates is less than 100%.
 candidate_score <- function(for_candidate, against_candidate) {
     # here, we give the percent of the vote they captured, scaled to 100%
     # e.g. if you had 60% for and 30% against, your score is 66%
@@ -80,6 +83,14 @@ expected_democratic_scores <- function(year) {
     }
 }
 
+# finds the expected score for a generic candidate of the party of the minority candidate
+# in the given election
+expected_scores <- function(row) {
+    democrat_expected <- expected_democratic_scores(row[['Year']])
+    expected <- if (is_minority_democrat(row)) democrat_expected else 1 - democrat_expected
+    return (expected)
+}
+
 # Given the combined race / boosts matrix and a candidate race, returns the median
 # boost by voter race
 boosts_of_race <- function(combined, race) {
@@ -98,12 +109,7 @@ boosts_of_race <- function(combined, race) {
 # of the minority candidate's boost,
 # where boost is (actual score for candidate) - (expected score for year)
 minority_boost <- function(row) {
-  # we calculate expected score for democrats... if minority is republican we need to take
-  # 1 - that
-  democrat_expected <- expected_democratic_scores(row[['Year']])
-  expected <- if (is_minority_democrat(row)) democrat_expected else 1 - democrat_expected
-
-  return (minority_scores(row) - expected)
+  return (minority_scores(row) - expected_scores(row))
 }
 
 # Returns a table of racial boosts
