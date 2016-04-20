@@ -22,3 +22,19 @@ minority_race_of_election <- function(row) {
         return ('White')
     }
 }
+
+# given a certain minority race, returns a vector of the other
+# minority races
+# e.g. other_minorities("Black") == c("Hispanic", "Asian")
+other_minorities <- function(race) {
+    if (race == "Black") {
+        return(c("Hispanic", "Asian"))
+    }
+    else if (race == "Hispanic") {
+        return(c("Black", "Asian"))
+    }
+    else {
+        # asian
+        return(c("Black", "Hispanic"))
+    }
+}
