@@ -10,6 +10,25 @@ minority_boost <- function(row) {
   return (minority_scores(row) - expected_scores(row))
 }
 
+# for every election, returns the race of the minority candidate
+# and their boosts for every racial group.
+# this is the jumping-off point for every analysis.
+full_boost_data <- function() {
+    # map boost over all candidates
+    boosts <- apply(candidates, 1, minority_boost)
+
+    # get list of minorities per election
+    minorities <- apply(candidates, 1, minority_race_of_election)
+
+    # merge minority and boost data to get one big matrix
+    # each row = candidate, W boost, B boost, H boost, A boost
+    # note that this turns all the numbers into strings... can extract/numerify later
+    combined <- cbind(matrix(minorities), t(boosts))
+    colnames(combined) <- list("MinorityRace", "WhiteBoost", "BlackBoost", "HispanicBoost", "AsianBoost")
+
+    return (combined)
+}
+
 # Given the full boost data and a particular race, returns the
 # boost data for just candidates of that race. Effectively a filter.
 # The data is cleaned and turned into numbers.
@@ -29,24 +48,6 @@ median_boosts <- function(boosts) {
     return (medians)
 }
 
-# for every election, returns the race of the minority candidate
-# and their boosts for every racial group.
-# this is the jumping-off point for every analysis.
-full_boost_data <- function() {
-    # map boost over all candidates
-    boosts <- apply(candidates, 1, minority_boost)
-
-    # get list of minorities per election
-    minorities <- apply(candidates, 1, minority_race_of_election)
-
-    # merge minority and boost data to get one big matrix
-    # each row = candidate, W boost, B boost, H boost, A boost
-    # note that this turns all the numbers into strings... can extract/numerify later
-    combined <- cbind(matrix(minorities), t(boosts))
-    colnames(combined) <- list("MinorityRace", "WhiteBoost", "BlackBoost", "HispanicBoost", "AsianBoost")
-
-    return (combined)
-}
 
 # Returns a table containing the median racial boosts for every
 # candidate race / voter race pair.
