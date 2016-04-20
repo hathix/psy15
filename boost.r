@@ -48,10 +48,10 @@ candidate_ratio <- function(for_candidate, against_candidate) {
 }
 
 # returns a candidate's score: the difference between their support ratio
-# and the support ratio of a generic member of their party. A positive score
+# for a particular group and their overall support ratio. A positive score
 # means that the candidate overperformed expectations for a particular group.
-candidate_score <- function(candidate_ratio, national_ratio) {
-    return (candidate_ratio - national_ratio)
+candidate_score <- function(group_ratio, overall_ratio) {
+    return (group_ratio - overall_ratio)
 }
 
 # candidate_score <- function(for_candidate, against_candidate, for_national, against_national) {
@@ -73,15 +73,17 @@ minority_scores <- function(row) {
 
     # for every race, get the candidate's score for that race
     map_fn <- function(race){
-        # compare the candidate's ratio for this particular race...
-        for_candidate <- as.numeric(row[[p(for_party, race)]])
-        against_candidate <- as.numeric(row[[p(against_party, race)]])
-        candidate_ratio <- candidate_ratio(for_candidate, against_candidate)
+        # compare the candidate's ratio for this race...
+        race_for <- as.numeric(row[[p(for_party, race)]])
+        race_against <- as.numeric(row[[p(against_party, race)]])
+        race_ratio <- candidate_ratio(race_for, race_against)
 
-        # ...to the ratio of a generic candidate of their party
-        national_ratio <- expected_ratio(row, race)
+        # ...to their ratio overall
+        overall_for <- as.numeric(row[[p(for_party, 'Overall')]])
+        overall_against <- as.numeric(row[[p(against_party, 'Overall')]])
+        overall_ratio <- candidate_ratio(overall_for, overall_against)
 
-        return (candidate_score(candidate_ratio, national_ratio))
+        return (candidate_score(race_ratio, overall_ratio))
     }
     return (capply(races, map_fn))
 }
@@ -154,14 +156,14 @@ boosts_of_race <- function(combined, race) {
 # given a row of the candidates table, returns a vector (White, Black, Hispanic, Asian)
 # of the minority candidate's boost,
 # where boost is (actual score for candidate) - (expected score for year)
-boost <- function(row) {
+minority_boost <- function(row) {
   return (minority_scores(row) - expected_scores(row))
 }
 
 racial_boosts <- function() {
     # map boost over all candidates
     boosts <- apply(candidates, 1, function(row) {
-      return (boost(row))
+      return (minority_boost(row))
     })
 
     # get list of minorities per election
@@ -194,4 +196,4 @@ boosts <- racial_boosts()
 
 # e.g. show cory booker's scores
 # print(minority_scores(candidates[1,]))
-# print(boost(candidates[1,]))
+# print(minority_boost(candidates[1,]))
