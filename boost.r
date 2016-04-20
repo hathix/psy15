@@ -22,7 +22,7 @@ is_minority_democrat <- function(row) {
 }
 
 # returns the race of the minority candidate in a particular election
-get_minority_in_election <- function(row) {
+minority_race_of_election <- function(row) {
     # our elections are all white vs. minority and white vs. white
     # so if one is a minority, they must be the only minority
     # and if no minorities, both must be white
@@ -37,30 +37,34 @@ get_minority_in_election <- function(row) {
     }
 }
 
-# returns a subset of elections by the race of the minority candidate involved
-elections_by_race <- function(race) {
-    if (race == "White") {
-        # "White" elections have white-on-white
-        return(candidates[candidates$R.Race==race & candidates$D.Race==race,])
-    }
-    else {
-        # other elections have white-on-race
-        return(candidates[candidates$R.Race==race | candidates$D.Race==race,])
-    }
-}
-
-# returns a candidate's score (margin of victory, i.e. percent of vote) in an election
-get_candidate_score <- function(for_candidate, against_candidate) {
+# returns a candidate's ratio of support in an election.
+# this is the ratio of people supporting them over the total number of people
+# polled. this standardizes for polls where the total amount of support
+# for the 2 major candidates is less than 100%.
+candidate_ratio <- function(for_candidate, against_candidate) {
     # here, we give the percent of the vote they captured, scaled to 100%
     # e.g. if you had 60% for and 30% against, your score is 66%
     return (for_candidate / (for_candidate + against_candidate))
 }
 
+# returns a candidate's score: the difference between their support ratio
+# and the support ratio of a generic member of their party. A positive score
+# means that the candidate overperformed expectations for a particular group.
+candidate_score <- function(candidate_ratio, national_ratio) {
+    return (candidate_ratio - national_ratio)
+}
+
+# candidate_score <- function(for_candidate, against_candidate, for_national, against_national) {
+#     candidate_ratio <- candidate_ratio(for_candidate, against_candidate)
+#     national_ratio <- candidate_ratio(for_national, against_national)
+#     return (candidate_ratio - national_ratio)
+# }
+
 # given a row of the candidates table, returns a vector of the minority's scores
 # for each race
 # vector contains (White, Black, Hispanic, Asian)
 # in white-white elections, the democrat (arbitrarily chosen) is the minority
-get_minority_racial_scores <- function(row) {
+minority_scores <- function(row) {
 
     # column names are like `R.White` and `D.Asian` so we have to prepend the
     # party label before the race
@@ -69,32 +73,73 @@ get_minority_racial_scores <- function(row) {
 
     # for every race, get the candidate's score for that race
     map_fn <- function(race){
+        # compare the candidate's ratio for this particular race...
         for_candidate <- as.numeric(row[[p(for_party, race)]])
         against_candidate <- as.numeric(row[[p(against_party, race)]])
-        return (get_candidate_score(for_candidate, against_candidate))
+        candidate_ratio <- candidate_ratio(for_candidate, against_candidate)
+
+        # ...to the ratio of a generic candidate of their party
+        national_ratio <- expected_ratio(row, race)
+
+        return (candidate_score(candidate_ratio, national_ratio))
     }
     return (capply(races, map_fn))
 }
 
+# returns the support ratio of a generic democrat in a given year
+# among a given race.
+# race = one of 'White', 'Black', 'Hispanic', 'Asian', 'Overall'
+expected_democratic_ratio <- function(year, race) {
+    year_data <- preferences[preferences$Year == year,]
+
+    # this data assumes that democratic% + republican% = 100%
+    # so R% = 100% - D%
+    race_support <- as.numeric(year_data[[p(race, '.D.')]])
+    return (candidate_ratio(race_support, 100 - race_support))
+}
+
+# returns the support ratio of a generic member of the party of the minority in the
+# election, among a given race.
+expected_ratio <- function(row, race) {
+    democratic_ratio <- expected_democratic_ratio(row[['Year']], race)
+    ratio <- if (is_minority_democrat(row))  democratic_ratio else 1 - democratic_ratio
+    return (ratio)
+}
+
 # given a year, finds the expected scores (White, Black, Hispanic, Asian)
 # for a generic democratic candidate
-get_expected_democratic_scores <- function(year) {
+expected_democratic_scores <- function(year) {
     year_data <- preferences[preferences$Year == year,]
     if (nrow(year_data) > 0) {
-        # our csv stores percentage points (e.g. 45), we need to convert to percent (e.g. 0.45)
-        # TODO refactor to use get_candidate_score (similarly to above fn)
-        return (c(year_data$White.D., year_data$Black.D., year_data$Hispanic.D., year_data$Asian.D.) / 100)
+        # for every race, get a generic democrat's score for that race
+        # we only track the democratic% since the data given to us
+        # have democratic% + republican% = 100%, so we can just subtract
+        # the D% from 100% to get R%
+        map_fn <- function(race){
+            race_ratio <- expected_democratic_ratio(year, race)
+            overall_ratio <- expected_democratic_ratio(year, 'Overall')
+            return (candidate_score(race_ratio, overall_ratio))
+        }
+        return (capply(races, map_fn))
     }
     else {
         # this year isn't in the dataset but interpolate from the surrounding years
-        average <- (get_expected_democratic_scores(year + 1) + get_expected_democratic_scores(year - 1)) / 2
+        average <- (expected_democratic_scores(year + 1) + expected_democratic_scores(year - 1)) / 2
         return (average)
     }
 }
 
+# finds the expected score for a generic candidate of the party of the minority candidate
+# in the given election
+expected_scores <- function(row) {
+    democrat_expected <- expected_democratic_scores(row[['Year']])
+    expected <- if (is_minority_democrat(row)) democrat_expected else 1 - democrat_expected
+    return (expected)
+}
+
 # Given the combined race / boosts matrix and a candidate race, returns the median
 # boost by voter race
-boosts_by_race <- function(combined, race) {
+boosts_of_race <- function(combined, race) {
   # filter out only the elections with candidates of that race
   elections_of_race <- combined[combined[,'MinorityRace'] == race,]
   # extract just the boosts now, and convert it back into numbers
@@ -109,44 +154,44 @@ boosts_by_race <- function(combined, race) {
 # given a row of the candidates table, returns a vector (White, Black, Hispanic, Asian)
 # of the minority candidate's boost,
 # where boost is (actual score for candidate) - (expected score for year)
-get_minority_boost <- function(row) {
-  # we calculate expected score for democrats... if minority is republican we need to take
-  # 1 - that
-  democrat_expected <- get_expected_democratic_scores(row[['Year']])
-  expected <- if (is_minority_democrat(row)) democrat_expected else 1 - democrat_expected
-
-  return (get_minority_racial_scores(row) - expected)
+boost <- function(row) {
+  return (minority_scores(row) - expected_scores(row))
 }
+
+racial_boosts <- function() {
+    # map boost over all candidates
+    boosts <- apply(candidates, 1, function(row) {
+      return (boost(row))
+    })
+
+    # get list of minorities per election
+    minorities <- apply(candidates, 1, minority_race_of_election)
+
+    # merge minority and boost data to get one big matrix
+    # each row = candidate, W boost, B boost, H boost, A boost
+    # note that this turns all the numbers into strings... can extract/numerify later
+    combined <- cbind(matrix(minorities),t(boosts))
+    colnames(combined) <- list("MinorityRace", "WhiteBoost", "BlackBoost", "HispanicBoost", "AsianBoost")
+
+    # calculate the boosts for every race
+    racial_boosts <- rbind(
+      boosts_of_race(combined, "White"),
+      boosts_of_race(combined, "Black"),
+      boosts_of_race(combined, "Hispanic"),
+      boosts_of_race(combined, "Asian")
+    )
+    rownames(racial_boosts) <- races
+
+    return (racial_boosts)
+}
+
+boosts <- racial_boosts()
 
 
 # calculate how many elections we have for every race
-elections_per_race <- lapply(races, {function(r) nrow(elections_by_race(r))})
+# elections_per_race <- lapply(races, {function(r) nrow(elections_by_race(r))})
 # print(elections_per_race)
 
 # e.g. show cory booker's scores
-# print(get_minority_racial_scores(candidates[1,]))
-# print(get_minority_boost(candidates[1,]))
-
-# map boost over all candidates
-boosts <- apply(candidates, 1, function(row) {
-  z <- noquote(row)
-  return (get_minority_boost(z))
-})
-
-# get list of minorities per election
-minorities <- apply(candidates, 1, get_minority_in_election)
-
-# merge minority and boost data to get one big matrix
-# each row = candidate, W boost, B boost, H boost, A boost
-# note that this turns all the numbers into strings... can extract/numerify later
-combined <- cbind(matrix(minorities),t(boosts))
-colnames(combined) <- list("MinorityRace", "WhiteBoost", "BlackBoost", "HispanicBoost", "AsianBoost")
-
-# calculate the boosts for every race
-racial_boosts <- rbind(
-  boosts_by_race(combined, "White"),
-  boosts_by_race(combined, "Black"),
-  boosts_by_race(combined, "Hispanic"),
-  boosts_by_race(combined, "Asian")
-)
-rownames(racial_boosts) <- races
+# print(minority_scores(candidates[1,]))
+# print(boost(candidates[1,]))
