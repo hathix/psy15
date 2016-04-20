@@ -15,20 +15,20 @@ test_same_race_boosts <- function() {
     map_fn <- function(race) {
         data <- full_boost_data()
         boosts <- boosts_of_race(data, race)
-        # compare WhiteBoost to [Race]Boost
-        white_boosts <- boosts[,p('WhiteBoost')]
-        race_boosts <- boosts[,p(race, 'Boost')]
 
-        # white and race boosts are both lists where the
-        # corresponding elements
+        # consider only WhiteBoost and `Race`Boost
+        main_boosts <- boosts[,c('WhiteBoost', p(race, 'Boost'))]
 
-        print(race)
-        print(white_boosts)
-        print(race_boosts)
+        # disregard any rows (elections) where the race boost is N/A
+        # (namely, we don't have data on how voters of the candidate's race
+        # voted for them)
+        filtered_boosts <- main_boosts[
+            !is.na(main_boosts[,1]) & !is.na(main_boosts[,2]),]
 
         # paired=TRUE here since each white/race boost is paired
         # (both come from the same election)
-        ttest <- t.test(race_boosts, white_boosts, paired=TRUE, alternative="greater")
+        ttest <- t.test(filtered_boosts[,2], filtered_boosts[,1],
+            paired=TRUE, alternative="greater")
         return (ttest[['p.value']])
     }
 
