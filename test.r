@@ -25,6 +25,9 @@ test_same_race_boosts <- function() {
         # filtered_boosts <- main_boosts[
             # !is.na(main_boosts[,1]) & !is.na(main_boosts[,2]),]
 
+        # TODO consider merging all boosts besides the same race and running
+        # an unpaired comparison there
+
         # paired=TRUE here since each white/race boost is paired
         # (both come from the same election)
         ttest <- t.test(main_boosts[,2], main_boosts[,1],
@@ -33,4 +36,15 @@ test_same_race_boosts <- function() {
     }
 
     return (capply(races, map_fn))
+}
+
+#
+# Tests the hypothesis that a candidate of a particular minority race gets a
+# greater boost from his own race than from other minority races.
+# In other words,
+#   H_a = B_own > B_others
+#   H_0 = B_own = B_others
+#
+test_minority_boosts <- function(){
+    # TODO
 }
