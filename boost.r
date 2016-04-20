@@ -44,7 +44,7 @@ boosts_of_race <- function(combined, race) {
 
 # returns the median boost for every race. Run on the return value of boosts_of_race().
 median_boosts <- function(boosts) {
-    medians <- apply(boosts, 2, function(col) { return(median(col, na.rm=TRUE))})
+    medians <- apply(boosts, 2, function(col) { return(mean(col, na.rm=TRUE))})
     return (medians)
 }
 

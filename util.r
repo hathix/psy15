@@ -12,3 +12,10 @@ p <- function(..., sep='') {
 capply <- function(v, f) {
     return(unlist(lapply(v, f)))
 }
+
+# makes 2 vectors the same length, adding NA's to the shorter one.
+equalize <- function(x,y) {
+    n <- max(length(x), length(y))
+    length(x) <- n
+    length(y) <- n
+}
