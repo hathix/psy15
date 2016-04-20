@@ -97,6 +97,13 @@ expected_scores <- function(row) {
     return (expected)
 }
 
+# given a row of the candidates table, returns a vector (White, Black, Hispanic, Asian)
+# of the minority candidate's boost,
+# where boost is (actual score for candidate) - (expected score for year)
+minority_boost <- function(row) {
+  return (minority_scores(row) - expected_scores(row))
+}
+
 # Given the combined race / boosts matrix and a candidate race, returns the median
 # boost by voter race
 boosts_of_race <- function(combined, race) {
@@ -111,15 +118,10 @@ boosts_of_race <- function(combined, race) {
   return (medians)
 }
 
-# given a row of the candidates table, returns a vector (White, Black, Hispanic, Asian)
-# of the minority candidate's boost,
-# where boost is (actual score for candidate) - (expected score for year)
-minority_boost <- function(row) {
-  return (minority_scores(row) - expected_scores(row))
-}
-
-# Returns a table of racial boosts
-racial_boosts <- function() {
+# for every election, returns the race of the minority candidate
+# and their boosts for every racial group.
+# this is the jumping-off point for every analysis.
+full_boost_data <- function() {
     # map boost over all candidates
     boosts <- apply(candidates, 1, minority_boost)
 
@@ -131,6 +133,13 @@ racial_boosts <- function() {
     # note that this turns all the numbers into strings... can extract/numerify later
     combined <- cbind(matrix(minorities), t(boosts))
     colnames(combined) <- list("MinorityRace", "WhiteBoost", "BlackBoost", "HispanicBoost", "AsianBoost")
+
+    return (combined)
+}
+
+# Returns a table of racial boosts
+racial_boosts <- function() {
+    combined <- full_boost_data()
 
     # calculate the boosts for every race
     racial_boosts <- rbind(
