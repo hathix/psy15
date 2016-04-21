@@ -5,5 +5,5 @@ source("score.r")
 source("boost.r")
 source("test.r")
 
-ss <- summary_stats()
-write.table(ss, "test.csv")
+stats <- summary_stats()
+write.csv(stats, "out.csv")
