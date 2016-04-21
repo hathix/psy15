@@ -1,4 +1,6 @@
-# psy15
+# Social psychology final project
+
+Analyzing whether minorities vote for candidates of their own race more than they vote for candidates of other minority races.
 
 ## Running
 
