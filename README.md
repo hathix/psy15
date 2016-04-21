@@ -10,3 +10,4 @@ R < main.r --no-save
 
 - Racial preferences by year: [New York Times exit polls](http://www.nytimes.com/interactive/2014/11/04/us/politics/2014-exit-polls.html)
 - Candidate support by race: varies; see `data/election-sources.csv`
+- Racial vs. overall voting patterns: racial voting patterns for each election from _Racial preferences by year_; overall voting patterns for each election from Wikipedia
