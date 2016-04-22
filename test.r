@@ -50,16 +50,66 @@ summary_stats <- function() {
         return(c(
             mean(self_boosts, na.rm=TRUE),
             sd(self_boosts, na.rm=TRUE),
+            length(na.omit(self_boosts)),
             mean(white_boosts, na.rm=TRUE),
             sd(white_boosts, na.rm=TRUE),
+            length(na.omit(white_boosts)),
             mean(other_boosts, na.rm=TRUE),
             sd(other_boosts, na.rm=TRUE),
+            length(na.omit(other_boosts)),
             self_white.p,
             self_other.p
         ))
     }
 
     raw_table <- sapply(minorities, map_fn)
-    rownames(raw_table) <- c("self.mean", "self.sd", "white.mean", "white.sd", "other.mean", "other.sd", "self_white.p", "self_other.p")
-    return (t(raw_table))
+    rownames(raw_table) <- c(
+      "self.mean", "self.sd", "self.n",
+      "white.mean", "white.sd", "white.n",
+      "other.mean", "other.sd", "other.n",
+      "self_white.p", "self_other.p")
+    return (raw_table)
+}
+
+voter_stats_by_race <- function(race) {
+  data <- as.data.frame(full_boost_data())
+  # get just the boosts for this race
+  race_boosts <- data[,c("MinorityRace", p(race, "Boost"))]
+  
+  # filter apart white-white elections
+  white_boosts <- race_boosts[race_boosts[,'MinorityRace'] == 'White',]
+  minority_boosts <- race_boosts[race_boosts[,'MinorityRace'] != 'White',]
+  
+  # get just the boosts for this race
+  white_race_boosts <- as.vector(na.omit(white_boosts[, p(race, "Boost")]))
+  class(white_race_boosts) <- "numeric"
+  minority_race_boosts <-  as.vector(na.omit(minority_boosts[, p(race, "Boost")]))
+  class(minority_race_boosts) <- "numeric"
+  
+  return(c(
+    mean(white_race_boosts),
+    sd(white_race_boosts),
+    length(white_race_boosts),
+    mean(minority_race_boosts),
+    sd(minority_race_boosts),
+    length(minority_race_boosts),
+    t.test(minority_race_boosts, white_race_boosts, alternative="greater")[['p.value']]
+  ))
+}
+
+voter_stats <- function() {
+  minorities <- c("Black", "Hispanic", "Asian")
+  raw_table <- sapply(minorities, voter_stats_by_race)
+  
+  rownames(raw_table) <- c(
+    "white.mean",
+    "white.sd",
+    "white.n",
+    "minorities.mean",
+    "minorities.sd",
+    "minorities.n",
+    "p"
+  )
+  
+  return (raw_table)
 }
